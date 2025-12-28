@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- Updated viewport for strict no-zoom -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Pro Notes Ultra AI v7 Final</title>
+    <style>
+        :root {
+            --bg: #0b0b0b;
+            --surface: #1a1a1a;
+            --accent: #ffffff;
+            --danger: #ff3b30;
+            --whatsapp-green: #25d366;
+            --select-color: #007aff;
+        }
+
+        /* --- GLOBAL & NO SELECT & NO ZOOM CSS --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        html, body {
+            /* STICT ZOOM DISABLE PROPERTIES */
+            touch-action: pan-x pan-y; 
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+            overscroll-behavior: none;
+        }
+
+        body { 
+            background-color: var(--bg); color: #fff; height: 100vh; overflow: hidden; 
+            user-select: none; -webkit-user-select: none; 
+        }
+
+        /* Text selection enabled for inputs */
+        textarea, input, .selectable-text { 
+            user-select: text !important; 
+            -webkit-user-select: text !important; 
+        }
+
+        /* --- HOME SCREEN --- */
+        header { 
+            padding: 25px 20px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            background: rgba(11, 11, 11, 0.8);
+            backdrop-filter: blur(15px);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .logo-area { display: flex; align-items: center; gap: 8px; }
+        h1 { font-size: 26px; font-weight: 800; letter-spacing: -1px; }
+        
+        .dot-btn { background: none; border: none; cursor: pointer; padding: 5px; color: #fff; }
+
+        .note-list { height: calc(100vh - 90px); overflow-y: auto; padding: 20px; display: grid; gap: 16px; padding-bottom: 120px; }
+        
+        .note-card { 
+            padding: 24px; border-radius: 24px; color: #000; font-weight: 600; font-size: 18px; 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3); transition: 0.2s; position: relative;
+            border: 3px solid transparent;
+        }
+        .note-card.selected { border-color: #fff; transform: scale(0.98); opacity: 0.9; }
+        .checkbox-indicator {
+            position: absolute; top: 15px; right: 15px; width: 24px; height: 24px;
+            background: rgba(0,0,0,0.3); border-radius: 50%; display: none;
+            align-items: center; justify-content: center; color: #fff;
+        }
+        .note-card.selected .checkbox-indicator { display: flex; background: #000; }
+        .note-date { display: block; margin-top: 10px; font-size: 11px; opacity: 0.6; text-transform: uppercase; }
+
+        /* --- DROPDOWN --- */
+        .dropdown { 
+            position: absolute; right: 20px; top: 70px; background: #222; 
+            border-radius: 18px; display: none; z-index: 1000; 
+            border: 1px solid #333; overflow: hidden; min-width: 200px;
+        }
+        .dropdown.active { display: block; animation: slideDown 0.2s ease; }
+        .drop-item { padding: 15px 20px; color: #fff; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #333; }
+        .drop-item:last-child { border-bottom: none; }
+        .drop-item:active { background: #333; }
+        .lang-sub { font-size: 12px; opacity: 0.7; margin-left: auto; }
+
+        /* --- AI CHAT INTERFACE --- */
+        #ai-chat-screen { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: var(--bg); z-index: 2000; display: none; flex-direction: column; 
+        }
+        #ai-chat-screen.active { display: flex; }
+        .chat-header { padding: 15px; display: flex; align-items: center; gap: 15px; border-bottom: 1px solid #222; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+        .msg { max-width: 85%; padding: 14px 18px; border-radius: 22px; font-size: 15px; line-height: 1.5; position: relative; }
+        .msg.user { align-self: flex-end; background: #fff; color: #000; border-bottom-right-radius: 4px; }
+        .msg.ai { align-self: flex-start; background: #222; color: #fff; border-bottom-left-radius: 4px; }
+        
+        .voice-bubble { display: flex; align-items: center; gap: 10px; }
+        .play-btn { background: none; border: none; color: inherit; cursor: pointer; display: flex; align-items: center; }
+
+        /* LOADING SPINNER FOR AI */
+        .loading-spinner {
+            width: 24px; height: 24px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            display: inline-block;
+        }
+
+        /* RECORDING CONTROLS AREA */
+        .chat-input-bar { padding: 15px 20px; display: flex; align-items: center; gap: 15px; background: #111; border-top: 1px solid #222; min-height: 80px; }
+        .rec-ui { flex: 1; display: none; align-items: center; justify-content: space-between; gap: 10px; }
+        .wave-container { flex: 1; display: flex; align-items: center; gap: 3px; height: 30px; }
+        .bar { width: 3px; background: var(--danger); border-radius: 2px; height: 10px; animation: wave-anim 0.5s infinite ease-in-out; }
+        
+        .mic-circle { 
+            width: 55px; height: 55px; border-radius: 50%; border: none; 
+            background: #fff; color: #000; display: flex; align-items: center; justify-content: center; 
+        }
+        .send-btn { 
+            width: 55px; height: 55px; border-radius: 50%; border: none; 
+            background: var(--whatsapp-green); color: #fff; display: none; align-items: center; justify-content: center; 
+        }
+
+        /* --- FULL SCREEN EDITOR --- */
+        #editor-screen { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: var(--bg); z-index: 500; display: none; flex-direction: column;
+            transform: translateY(100%); transition: 0.4s cubic-bezier(0.1, 0.9, 0.2, 1);
+        }
+        #editor-screen.active { display: flex; transform: translateY(0); }
+        .ed-header { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; }
+        
+        .ed-left-actions { display: flex; align-items: center; gap: 15px; }
+
+        .ed-tools { display: flex; gap: 12px; }
+        .tool-btn { 
+            background: #222; border: none; width: 44px; height: 44px; 
+            border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #fff;
+        }
+        .tool-btn.active { background: #fff; color: #000; }
+
+        textarea { flex: 1; background: transparent; border: none; color: #eee; font-size: 22px; padding: 25px; outline: none; resize: none; line-height: 1.6; }
+
+        /* BUBBLE ENGINE (SIMPLE TEXT NOW) */
+        .inv-bubble { display: block; color: #eee; font-size: 22px; line-height: 1.8; white-space: pre-wrap; }
+
+        /* FAB & Bulk Delete */
+        .fab { position: fixed; bottom: 30px; right: 30px; width: 65px; height: 65px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 10; transition: 0.3s; }
+        
+        .bulk-delete-btn {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            width: 70px; height: 70px; background: #ff3b30; border-radius: 20px;
+            display: none; align-items: center; justify-content: center; color: #fff;
+            box-shadow: 0 10px 30px rgba(255, 59, 48, 0.4); z-index: 15;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* --- CUSTOM MODAL --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 3000; display: none;
+            align-items: center; justify-content: center; backdrop-filter: blur(5px);
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: #222; width: 80%; max-width: 300px; border-radius: 20px;
+            overflow: hidden; border: 1px solid #333; box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            animation: scaleUp 0.2s ease;
+            display: flex; flex-direction: column;
+        }
+        .modal-title {
+            padding: 15px 20px; font-size: 15px; color: #aaa; text-align: center; border-bottom: 1px solid #333; font-weight: 500;
+        }
+        .modal-btn {
+            width: 100%; padding: 18px; background: transparent; border: none; border-bottom: 1px solid #333;
+            color: #fff; font-size: 16px; font-weight: 500; cursor: pointer;
+        }
+        .modal-btn:last-child { border-bottom: none; font-weight: 700; color: #888; }
+        .modal-btn.danger { color: #ff3b30; }
+        .modal-btn:active { background: #333; }
+
+        @keyframes slideDown { from {opacity:0; transform: translateY(-10px);} to {opacity:1; transform: translateY(0);} }
+        @keyframes wave-anim { 0%, 100% { height: 8px; } 50% { height: 25px; } }
+        @keyframes popIn { from { transform: translate(-50%, 50px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+        @keyframes scaleUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body oncontextmenu="return false;">
+
+    <!-- HOME SCREEN -->
+    <div id="home-screen">
+        <header>
+            <div class="logo-area">
+                <h1>Pro Notes</h1>
+                <button class="dot-btn" onclick="toggleMenu()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                </button>
+            </div>
+            <div class="dropdown" id="main-menu">
+                <div class="drop-item" onclick="openAIChat()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                    AI Speech Chat
+                </div>
+                <div class="drop-item" onclick="changeLang('hinglish')">
+                    <span>Hinglish</span> <span class="lang-sub" id="chk-hinglish">✓</span>
+                </div>
+                <div class="drop-item" onclick="changeLang('english')">
+                    <span>English</span> <span class="lang-sub" id="chk-english"></span>
+                </div>
+                <div class="drop-item" onclick="changeLang('hindi')">
+                    <span>Hindi</span> <span class="lang-sub" id="chk-hindi"></span>
+                </div>
+            </div>
+        </header>
+        
+        <div class="note-list" id="note-list"></div>
+        
+        <div class="fab" id="main-fab" onclick="openEditor(null)">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3"><path d="M12 5v14M5 12h14"/></svg>
+        </div>
+
+        <div class="bulk-delete-btn" id="bulk-del-btn" onclick="askDeleteSelected()">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+        </div>
+    </div>
+
+    <!-- AI CHAT SCREEN -->
+    <div id="ai-chat-screen">
+        <div class="chat-header">
+            <button onclick="closeAIChat()" style="background:none; border:none; color:#fff;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+            <span style="font-weight:800; font-size:18px;">AI Assistant</span>
+        </div>
+        <div class="chat-messages" id="chat-box">
+            <div class="msg ai" oncontextmenu="return false;">Namaste! Boliye, main sun raha hoon.</div>
+        </div>
+        
+        <div class="chat-input-bar">
+            <!-- Mic Button -->
+            <button class="mic-circle" id="ai-mic-btn">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </button>
+
+            <!-- Recording UI -->
+            <div class="rec-ui" id="rec-ui">
+                <button onclick="cancelRec()" style="background:none; border:none; color:#777;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                <div style="color:var(--danger); font-weight:bold; font-size:14px;" id="timer">0:00</div>
+                <div class="wave-container">
+                    <div class="bar"></div><div class="bar" style="animation-delay:0.1s"></div><div class="bar" style="animation-delay:0.2s"></div><div class="bar" style="animation-delay:0.3s"></div><div class="bar" style="animation-delay:0.4s"></div>
+                </div>
+            </div>
+
+            <!-- Send Button -->
+            <button class="send-btn" id="ai-send-btn">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transform:rotate(45deg)"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- EDITOR SCREEN -->
+    <div id="editor-screen">
+        <div class="ed-header">
+            <div class="ed-left-actions">
+                <button onclick="closeEditor()" style="background:none; border:none; color:#fff; font-weight:800;">✕ CLOSE</button>
+                <button onclick="copyEditorText()" style="background:none; border:none; color:#fff;" title="Copy All">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+            </div>
+            
+            <div class="ed-tools">
+                <!-- Speaker Button (New) -->
+                <button class="tool-btn" id="ed-speak-btn" title="Speak Selected">
+                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                </button>
+                
+                <button class="tool-btn" id="ed-mic-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></button>
+                <button class="tool-btn" id="ed-read-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+        </div>
+        <textarea id="ed-text" placeholder="Likhiye ya Mic use kariye..."></textarea>
+        <!-- Read View (No bubble blocks) -->
+        <div id="read-view" style="display:none; padding:25px; overflow-y:auto;"></div>
+    </div>
+
+    <!-- CUSTOM CONTEXT MENU MODAL -->
+    <div class="modal-overlay" id="ctx-modal">
+        <div class="modal-box" id="ctx-box"></div>
+    </div>
+
+    <script>
+        // --- DISABLE ALL ZOOMING (Mobile/Desktop/Pinch/Keyboard/Wheel) ---
+        // 1. Prevent Pinch Zoom (iOS/Android)
+        document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
+        document.addEventListener('touchmove', function(e) { if(e.scale !== 1) e.preventDefault(); }, { passive: false });
+        
+        // 2. Prevent Ctrl + Scroll (Desktop)
+        document.addEventListener('wheel', function(e) {
+            if (e.ctrlKey) e.preventDefault();
+        }, { passive: false });
+
+        // 3. Prevent Ctrl + +/-/0 (Desktop Keyboard)
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0')) {
+                e.preventDefault();
+            }
+        });
+        
+        // --- DATA & CONFIG ---
+        let notes = JSON.parse(localStorage.getItem('ultra_ai_v7')) || [];
+        let currentId = null;
+        let selectionMode = false;
+        let selectedIds = new Set();
+        let appLang = localStorage.getItem('ultra_lang') || 'hinglish'; 
+        const colors = ['#ff80bf', '#80ff9f', '#fff580', '#80d4ff', '#ff9980', '#a380ff'];
+
+        // --- SPEECH RECOGNITION SETUP ---
+        const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recog = Recognition ? new Recognition() : null;
+        
+        function updateLangConfig() {
+            if(!recog) return;
+            if(appLang === 'english') recog.lang = 'en-IN';
+            else if(appLang === 'hindi') recog.lang = 'hi-IN';
+            else recog.lang = 'hi-IN'; 
+            
+            document.getElementById('chk-hinglish').innerText = appLang==='hinglish'?'✓':'';
+            document.getElementById('chk-english').innerText = appLang==='english'?'✓':'';
+            document.getElementById('chk-hindi').innerText = appLang==='hindi'?'✓':'';
+        }
+        if(recog) {
+            recog.continuous = true; 
+            // Fixed: Set to false to prevent double text issues completely
+            recog.interimResults = false; 
+            updateLangConfig();
+        }
+
+        // --- GLOBAL UI HANDLERS ---
+        function toggleMenu() { document.getElementById('main-menu').classList.toggle('active'); }
+        
+        function changeLang(l) {
+            appLang = l;
+            localStorage.setItem('ultra_lang', l);
+            updateLangConfig();
+            toggleMenu(); 
+            alert("Language set to: " + l.toUpperCase());
+        }
+
+        // --- LONG PRESS UTILITY ---
+        function addLongPressListener(elem, onLongPress, onClick) {
+            let timer;
+            let isLong = false;
+            elem.addEventListener('touchstart', (e) => {
+                isLong = false;
+                timer = setTimeout(() => {
+                    isLong = true;
+                    if(navigator.vibrate) navigator.vibrate(50);
+                    onLongPress(e);
+                }, 600);
+            });
+            elem.addEventListener('touchend', (e) => {
+                clearTimeout(timer);
+                if (!isLong && onClick) onClick(e);
+            });
+            elem.addEventListener('touchmove', () => {
+                clearTimeout(timer);
+                isLong = false;
+            });
+            elem.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                onLongPress(e);
+            });
+            if(onClick) elem.addEventListener('click', (e) => {});
+        }
+
+        // --- HOME SCREEN LOGIC ---
+        function render() {
+            const list = document.getElementById('note-list');
+            list.innerHTML = '';
+            
+            const fab = document.getElementById('main-fab');
+            const bulkBtn = document.getElementById('bulk-del-btn');
+            
+            if(selectionMode) {
+                fab.style.display = 'none';
+                bulkBtn.style.display = 'flex';
+            } else {
+                fab.style.display = 'flex';
+                bulkBtn.style.display = 'none';
+                selectedIds.clear();
+            }
+
+            notes.slice().reverse().forEach(n => {
+                const card = document.createElement('div');
+                card.className = 'note-card';
+                if(selectionMode && selectedIds.has(n.id)) card.classList.add('selected');
+                
+                card.style.background = n.color;
+                card.innerHTML = `
+                    <div class="checkbox-indicator"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                    <div style="pointer-events:none;">${n.text.substring(0,60) || "Empty Note"}...</div>
+                    <span class="note-date">${n.date}</span>
+                `;
+
+                if(selectionMode) {
+                    card.onclick = () => {
+                        if(selectedIds.has(n.id)) selectedIds.delete(n.id);
+                        else selectedIds.add(n.id);
+                        render();
+                    }
+                } else {
+                    addLongPressListener(card, 
+                        () => openNoteMenu(n.id), 
+                        () => openEditor(n.id)    
+                    );
+                }
+                list.appendChild(card);
+            });
+        }
+
+        function openNoteMenu(id) {
+            if(selectionMode) return;
+            showModal([
+                { text: 'Delete', danger: true, action: () => confirmDeleteSingle(id) },
+                { text: 'Select Multiple', danger: false, action: () => startSelectionMode(id) },
+                { text: 'Close', danger: false, action: closeModal }
+            ], 'Note Options');
+        }
+
+        function confirmDeleteSingle(id) {
+            showModal([
+                { text: 'Yes, Delete', danger: true, action: () => {
+                    notes = notes.filter(n => n.id !== id);
+                    save(); render();
+                    closeModal();
+                }},
+                { text: 'Cancel', danger: false, action: closeModal }
+            ], 'Delete this note?');
+        }
+
+        function startSelectionMode(initialId) {
+            selectionMode = true;
+            if(initialId) selectedIds.add(initialId);
+            closeModal();
+            render();
+        }
+        
+        document.querySelector('h1').onclick = () => {
+            if(selectionMode) {
+                selectionMode = false;
+                render();
+            }
+        };
+
+        function askDeleteSelected() {
+            if(selectedIds.size === 0) return;
+            showModal([
+                { text: `Delete ${selectedIds.size} Notes`, danger: true, action: () => {
+                    notes = notes.filter(n => !selectedIds.has(n.id));
+                    selectionMode = false;
+                    save(); render();
+                    closeModal();
+                }},
+                { text: 'Cancel', danger: false, action: closeModal }
+            ], `Delete selected notes?`);
+        }
+
+
+        // --- AI CHAT LOGIC (FIXED AS REQUESTED) ---
+        let chatAccumulatedText = ""; 
+        let timerInterval;
+
+        function openAIChat() { 
+            document.getElementById('main-menu').classList.remove('active'); 
+            document.getElementById('ai-chat-screen').classList.add('active'); 
+        }
+        function closeAIChat() { document.getElementById('ai-chat-screen').classList.remove('active'); }
+
+        const micBtn = document.getElementById('ai-mic-btn');
+        const sendBtn = document.getElementById('ai-send-btn');
+        const recUI = document.getElementById('rec-ui');
+        const timerTxt = document.getElementById('timer');
+
+        // 1. CLICK MIC -> START RECORDING
+        micBtn.onclick = () => {
+            if(!recog) return alert("Speech API not supported");
+            chatAccumulatedText = ""; // Clear previous
+            
+            // Set for Chat Mode
+            recog.onresult = (e) => {
+                for (let i = e.resultIndex; i < e.results.length; ++i) {
+                    if (e.results[i].isFinal) {
+                        chatAccumulatedText += e.results[i][0].transcript + " ";
+                    }
+                }
+            };
+
+            micBtn.style.display = 'none';
+            recUI.style.display = 'flex';
+            sendBtn.style.display = 'flex'; // Send button appears
+            recog.start();
+            startTimer();
+        };
+
+        function startTimer() {
+            let sec = 0;
+            timerInterval = setInterval(() => {
+                sec++;
+                let m = Math.floor(sec/60);
+                let s = sec%60;
+                timerTxt.innerText = `${m}:${s < 10 ? '0'+s : s}`;
+            }, 1000);
+        }
+
+        function cancelRec() {
+            recog.stop();
+            clearInterval(timerInterval);
+            timerTxt.innerText = "0:00";
+            micBtn.style.display = 'flex';
+            recUI.style.display = 'none';
+            sendBtn.style.display = 'none';
+            chatAccumulatedText = "";
+        }
+
+        // 2. CLICK SEND -> STOP REC -> SEND TEXT
+        sendBtn.onclick = () => {
+            // Stop recording first
+            recog.stop();
+            clearInterval(timerInterval);
+            
+            // UI Reset
+            timerTxt.innerText = "0:00";
+            micBtn.style.display = 'flex';
+            recUI.style.display = 'none';
+            sendBtn.style.display = 'none';
+
+            // Wait brief moment to ensure last chunk is caught, then process
+            setTimeout(() => {
+                const rawText = chatAccumulatedText.trim();
+                if(!rawText) return;
+
+                // 3. SHOW USER BUBBLE
+                const uDiv = document.createElement('div');
+                uDiv.className = 'msg user voice-bubble';
+                uDiv.innerHTML = `<button class="play-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg></button> <span>Voice Sent</span>`;
+                document.getElementById('chat-box').appendChild(uDiv);
+
+                // 4. SHOW SPINNER (AI THINKING)
+                const aiBubble = document.createElement('div');
+                aiBubble.className = 'msg ai';
+                aiBubble.innerHTML = `<div class="loading-spinner"></div>`; 
+                document.getElementById('chat-box').appendChild(aiBubble);
+                
+                // Scroll down
+                const box = document.getElementById('chat-box');
+                box.scrollTop = box.scrollHeight;
+
+                // 5. SIMULATE RESPONSE
+                setTimeout(() => {
+                    aiBubble.innerHTML = rawText; 
+                    
+                    addLongPressListener(aiBubble, () => {
+                        showModal([
+                            { text: 'Copy', danger: false, action: () => {
+                                navigator.clipboard.writeText(rawText);
+                                closeModal();
+                            }},
+                            { text: 'Delete', danger: true, action: () => aiBubble.remove() },
+                            { text: 'Close', danger: false, action: closeModal }
+                        ], 'Options');
+                    });
+                    
+                    chatAccumulatedText = "";
+                }, 4000); 
+            }, 200);
+        };
+
+
+        // --- MODAL SYSTEM ---
+        const modal = document.getElementById('ctx-modal');
+        const modalBox = document.getElementById('ctx-box');
+
+        function showModal(buttons, titleText) {
+            modalBox.innerHTML = '';
+            if(titleText) {
+                const t = document.createElement('div');
+                t.className = 'modal-title';
+                t.innerText = titleText;
+                modalBox.appendChild(t);
+            }
+            buttons.forEach(btn => {
+                const b = document.createElement('button');
+                b.className = 'modal-btn';
+                if(btn.danger) b.classList.add('danger');
+                b.innerText = btn.text;
+                b.onclick = btn.action;
+                modalBox.appendChild(b);
+            });
+            modal.classList.add('active');
+        }
+        function closeModal() { modal.classList.remove('active'); }
+        modal.onclick = (e) => { if(e.target === modal) closeModal(); }
+
+
+        // --- EDITOR LOGIC ---
+        function openEditor(id) {
+            if(selectionMode) return; 
+            currentId = id || Date.now();
+            let note = notes.find(n => n.id === currentId);
+            if(!note) {
+                note = {id: currentId, text: '', color: colors[Math.floor(Math.random()*colors.length)], date: new Date().toLocaleDateString()};
+                notes.push(note);
+            }
+            document.getElementById('ed-text').value = note.text;
+            document.getElementById('editor-screen').classList.add('active');
+            setEdMode('edit');
+        }
+
+        function copyEditorText() {
+            const txt = document.getElementById('ed-text').value;
+            if(txt) {
+                navigator.clipboard.writeText(txt);
+                alert("Text Copied!");
+            }
+        }
+
+        // --- SPEAKER (TTS) FUNCTIONALITY ---
+        document.getElementById('ed-speak-btn').onclick = () => {
+            const tx = document.getElementById('ed-text');
+            // Get selected text or warn
+            let selectedText = tx.value.substring(tx.selectionStart, tx.selectionEnd);
+            
+            if(!selectedText.trim()) {
+                alert("Please select text first!");
+                return;
+            }
+
+            if('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(selectedText);
+                // Try to match current app language
+                if(appLang === 'english') utterance.lang = 'en-IN';
+                else utterance.lang = 'hi-IN';
+                
+                window.speechSynthesis.cancel(); // Stop any previous
+                window.speechSynthesis.speak(utterance);
+            } else {
+                alert("TTS not supported.");
+            }
+        };
+
+        // --- FIXED READ MODE (NO BUBBLE BLOCKS) ---
+        function setEdMode(mode) {
+            const tx = document.getElementById('ed-text');
+            const rv = document.getElementById('read-view');
+            
+            if(mode === 'edit') {
+                tx.style.display = 'block'; rv.style.display = 'none';
+                document.getElementById('ed-read-btn').classList.remove('active');
+            } else {
+                // READ MODE: Show text simply, preserving newlines
+                tx.style.display = 'none'; rv.style.display = 'block';
+                document.getElementById('ed-read-btn').classList.add('active');
+                
+                // No split logic. Just text.
+                rv.innerHTML = `<span class="inv-bubble">${tx.value}</span>`;
+            }
+        }
+
+        document.getElementById('ed-read-btn').onclick = () => {
+            const isRead = document.getElementById('read-view').style.display === 'block';
+            setEdMode(isRead ? 'edit' : 'read');
+        };
+
+        // --- EDITOR MIC (FIXED DOUBLE TEXT) ---
+        document.getElementById('ed-mic-btn').onclick = function() {
+            if(!recog) return;
+            const btn = this;
+            btn.classList.add('active');
+            
+            // Define strictly for Editor
+            recog.onresult = (e) => {
+                for (let i = e.resultIndex; i < e.results.length; ++i) {
+                    if (e.results[i].isFinal) {
+                        const res = e.results[i][0].transcript;
+                        
+                        const box = document.getElementById('ed-text');
+                        const startPos = box.selectionStart;
+                        const endPos = box.selectionEnd;
+                        const oldVal = box.value;
+
+                        // Insert safely
+                        const before = oldVal.substring(0, startPos);
+                        const after = oldVal.substring(endPos, oldVal.length);
+                        const prefix = (before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n')) ? ' ' : '';
+                        
+                        box.value = before + prefix + res + after;
+                        
+                        const newCursor = startPos + prefix.length + res.length;
+                        box.setSelectionRange(newCursor, newCursor);
+                        save();
+                    }
+                }
+            };
+            
+            recog.onend = () => btn.classList.remove('active');
+            recog.start();
+        };
+
+        function closeEditor() {
+            const note = notes.find(n => n.id === currentId);
+            if(note) {
+                note.text = document.getElementById('ed-text').value;
+                if(!note.text.trim()) notes = notes.filter(n => n.id !== currentId);
+            }
+            save();
+            document.getElementById('editor-screen').classList.remove('active');
+            render();
+        }
+
+        function save() { localStorage.setItem('ultra_ai_v7', JSON.stringify(notes)); }
+        
+        render();
+
+    </script>
+</body>
+</html>
